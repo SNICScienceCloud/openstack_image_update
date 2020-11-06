@@ -1,0 +1,38 @@
+#!/bin/bash
+# Version 1.2
+#############
+
+source ../functions || exit 1
+source ~/openrc || exit 1
+source ../config || exit 1
+
+if [ "$TMP_DIR" = "" ]; then
+    echo \$TMP_DIR not set
+    exit 1
+fi
+
+mkdir $TMP_DIR || exit 1
+
+COREOS="CoreOS"
+COREOS_DESCR="Default user is 'core' and access is only allowed using ssh keys."
+COREOS_SIZE=10
+COREOS_BASE=https://stable.release.core-os.net/amd64-usr/current
+
+header_fetch_checksums 
+fetch_file $COREOS_BASE/coreos_production_openstack_image.img.bz2.DIGESTS.asc $TMP_DIR/COREOS.sha512sum.asc
+
+header_verify_signature
+verify_signature
+
+header_get_checksum
+COREOS_FILE="coreos_production_openstack_image.img.bz2"
+COREOS_CS=`/bin/egrep -A1 SHA512 $TMP_DIR/COREOS.sha512sum.asc | /bin/egrep coreos_production_openstack_image.img.bz2 | /usr/bin/awk '{print $1}'`
+echo $COREOS_FILE $COREOS_CS
+
+header_fetch_image 
+update_image $COREOS_BASE/$COREOS_FILE $TMP_DIR/$COREOS_FILE "$COREOS_CS" $COREOS_SIZE "$COREOS" "$COREOS_DESCR"
+
+cleanup 0
+
+# We should never end up here
+exit 1

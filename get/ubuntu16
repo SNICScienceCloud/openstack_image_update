@@ -1,0 +1,40 @@
+#!/bin/bash
+# Version 1.2
+#############
+
+source ../functions || exit 1
+source ~/openrc || exit 1
+source ../config || exit 1
+
+if [ "$TMP_DIR" = "" ]; then
+    echo \$TMP_DIR not set
+    exit 1
+fi
+
+mkdir $TMP_DIR || exit 1
+
+UBUNTU16="Ubuntu 16.04 LTS (Xenial Xerus)"
+UBUNTU16_DESCR="Default user is 'ubuntu' and access is only allowed using ssh keys."
+UBUNTU16_SIZE=10
+UBUNTU16_BASE=https://cloud-images.ubuntu.com/releases/16.04/release
+
+header_fetch_checksums 
+fetch_file $UBUNTU16_BASE/SHA256SUMS $TMP_DIR/UBUNTU16.sha256sum
+fetch_file $UBUNTU16_BASE/SHA256SUMS.gpg $TMP_DIR/UBUNTU16.sha256sum.gpg
+
+
+header_verify_signature
+verify_signature
+
+header_get_checksum
+UBUNTU16_FILE="ubuntu-16.04-server-cloudimg-amd64-disk1.img"
+UBUNTU16_CS=`/bin/egrep "$UBUNTU16_FILE" $TMP_DIR/UBUNTU16.sha256sum | /usr/bin/awk '{print $1}'`
+echo $UBUNTU16_FILE $UBUNTU16_CS
+
+header_fetch_image 
+update_image $UBUNTU16_BASE/$UBUNTU16_FILE $TMP_DIR/$UBUNTU16_FILE "$UBUNTU16_CS" $UBUNTU16_SIZE "$UBUNTU16" "$UBUNTU16_DESCR"
+
+cleanup 0
+
+# We should never end up here
+exit 1

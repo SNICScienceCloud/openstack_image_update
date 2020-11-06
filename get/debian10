@@ -1,0 +1,39 @@
+#!/bin/bash
+# Version 1.2
+#############
+
+source ../functions || exit 1
+source ~/openrc || exit 1
+source ../config || exit 1
+
+if [ "$TMP_DIR" = "" ]; then
+    echo \$TMP_DIR not set
+    exit 1
+fi
+
+mkdir $TMP_DIR || exit 1
+
+DEBIAN10="Debian 10 (Buster)"
+DEBIAN10_DESCR="Default user is 'debian' and access is only allowed using ssh keys."
+DEBIAN10_SIZE=10
+DEBIAN10_BASE=https://cdimage.debian.org/cdimage/openstack/current-10
+
+header_fetch_checksums 
+fetch_file $DEBIAN10_BASE/SHA256SUMS $TMP_DIR/DEBIAN10.sha256sum
+fetch_file $DEBIAN10_BASE/SHA256SUMS.sign $TMP_DIR/DEBIAN10.sha256sum.gpg
+
+header_verify_signature
+verify_signature
+
+header_get_checksum
+DEBIAN10_FILE=`/bin/egrep "debian-10.*openstack-amd64.qcow2$" $TMP_DIR/DEBIAN10.sha256sum | /usr/bin/awk '{print $2}'`
+DEBIAN10_CS=`/bin/egrep "debian-10.*openstack-amd64.qcow2$" $TMP_DIR/DEBIAN10.sha256sum | /usr/bin/awk '{print $1}'`
+echo $DEBIAN10_FILE $DEBIAN10_CS
+
+header_fetch_image 
+update_image $DEBIAN10_BASE/$DEBIAN10_FILE  $TMP_DIR/$DEBIAN10_FILE "$DEBIAN10_CS" $DEBIAN10_SIZE "$DEBIAN10" "$DEBIAN10_DESCR"
+
+cleanup 0
+
+# We should never end up here
+exit 1

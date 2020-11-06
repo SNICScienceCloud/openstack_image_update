@@ -1,0 +1,39 @@
+#!/bin/bash
+# Version 1.2
+#############
+
+source ../functions || exit 1
+source ~/openrc || exit 1
+source ../config || exit 1
+
+if [ "$TMP_DIR" = "" ]; then
+    echo \$TMP_DIR not set
+    exit 1
+fi
+
+mkdir $TMP_DIR || exit 1
+
+CENTOS7="CentOS 7"
+CENTOS7_DESCR="Default user is 'centos' and access is only allowed using ssh keys."
+CENTOS7_SIZE=10
+CENTOS7_BASE=https://cloud.centos.org/centos/7/images
+
+header_fetch_checksums 
+fetch_file $CENTOS7_BASE/sha256sum.txt.asc $TMP_DIR/CENTOS7.sha256sum.asc
+
+
+header_verify_signature
+verify_signature
+
+header_get_checksum
+CENTOS7_FILE="CentOS-7-x86_64-GenericCloud.qcow2"
+CENTOS7_CS=`/bin/egrep "CentOS-7-x86_64-GenericCloud-[0-9]+.qcow2$" $TMP_DIR/CENTOS7.sha256sum.asc | sort -k2,2 | tail -1 | /usr/bin/awk '{print $1}'`
+echo $CENTOS7_FILE $CENTOS7_CS
+
+header_fetch_image 
+update_image $CENTOS7_BASE/$CENTOS7_FILE $TMP_DIR/$CENTOS7_FILE "$CENTOS7_CS" $CENTOS7_SIZE "$CENTOS7" "$CENTOS7_DESCR"
+
+cleanup 0
+
+# We should never end up here
+exit 1

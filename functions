@@ -1,0 +1,131 @@
+#!/bin/bash
+# Version 1.2
+
+# Functions
+###########
+
+# cleanup( exit_code )
+function cleanup {
+
+    if [ "$1" = "0"  ]; then
+        echo
+        echo Script done `date`
+        echo
+    else
+        echo
+        echo Script failed `date`
+        echo
+    fi
+
+    rm $CLEANUP 2>/dev/null
+    rmdir $TMP_DIR
+    exit $1;
+}
+
+function verify_signature {
+    validate=0
+    for csf in `ls $TMP_DIR/*.sha???sum 2> /dev/null`; do 
+        echo /usr/bin/gpg --verify $csf.gpg $csf 
+        /usr/bin/gpg --trust-model always --verify $csf.gpg $csf || cleanup 1 
+        validate=1
+    done 
+    for csf in `ls $TMP_DIR/*.sha???sum.asc 2> /dev/null`; do
+        echo /usr/bin/gpg --verify $csf
+        /usr/bin/gpg --trust-model always --verify $csf || cleanup 1
+        validate=1
+    done
+
+    if [ $validate = 0 ]; then
+        cleanup 1
+    fi
+}
+
+# update_image( url local_file checksum image_size image_name )
+function update_image {
+    if [ $(fetch_checksum "$5 - latest")"" = "$3" ]; then
+        echo "$5 image is up to date, nothing to do."
+    else
+        echo "Fetching new $5 image."
+        fetch_image $1 $2 $3
+        if [[ $2 = *.bz2 ]]; then
+            /bin/bzip2 -d $2 || cleanup 1
+            FILE=`echo $2 | /bin/sed 's/\.bz2$//'`
+            CLEANUP="$CLEANUP $FILE"
+            replace_image "$FILE" "$3" "$4" "$5" "$6"
+        else
+            replace_image "$2" "$3" "$4" "$5" "$6"
+        fi    
+    fi
+}
+
+# fetch_checksum( image_name )
+function fetch_checksum {
+    /usr/local/bin/openstack image show -f value -c tags "$1" 2>&1 | /usr/bin/awk -F= '$1=="checksum"{print $2}'
+}
+
+# fetch_image( url local_file checksum ) 
+function fetch_image {
+    fetch_file $1 $2
+    echo "Compare checksums"
+    if [ `echo $3 | /usr/bin/wc -c` = "65" ]; then
+        CHECKSUM=`/usr/bin/sha256sum $2 | /usr/bin/awk '{print $1}'`;
+    else
+        CHECKSUM=`/usr/bin/sha512sum $2 | /usr/bin/awk '{print $1}'`;
+    fi
+
+    if [ $3 = $CHECKSUM ]; then
+        echo "Test OK."
+    else
+        echo "Test filed! Checksums do not match!"
+        cleanup 1;
+    fi
+
+}
+
+# replace_image( local_file checksum image_size image_name image_description )
+function replace_image {
+    CLEANUP="$CLEANUP $1.raw"
+    NOW=`date +"%Y-%m-%d %H:%M:%S"`
+    echo "Converting image from qcow2 to raw"
+    qemu-img convert -O raw -f qcow2 $1 $1.raw || cleanup 1
+    echo "Import to OpenStack"
+    /usr/local/bin/openstack image create --container-format bare --disk-format raw --file $1.raw --tag checksum=$2 --min-disk $3 --public "$4 - new $NOW" --property description="$5" 2>&1 |grep -v "penstackclient.common.utils is deprecated"
+    /usr/local/bin/openstack image set "$4 - latest" --name "$4 - remove $NOW" 2>&1 |grep -v "penstackclient.common.utils is deprecated"
+    /usr/local/bin/openstack image set "$4 - new $NOW" --name "$4 - latest" 2>&1 |grep -v "penstackclient.common.utils is deprecated"
+    /usr/local/bin/openstack image set --private "$4 - remove $NOW"
+    /usr/local/bin/openstack image delete "$4 - remove $NOW" 2>&1 |grep -v "penstackclient.common.utils is deprecated"
+}
+
+# fetch_file( url local_file )
+function fetch_file {
+    echo "Fetching $1 to $2"
+    /usr/bin/curl -L -s $1 -o $2 || cleanup 1 && CLEANUP="$CLEANUP $2"
+}
+
+function header_fetch_checksums {
+    echo
+    echo Fetch Checksums and GPG-signatures
+    echo ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    echo
+}
+    
+function header_verify_signature {
+    echo
+    echo Verify GPG-signature
+    echo ~~~~~~~~~~~~~~~~~~~~
+    echo
+}
+
+function header_get_checksum {
+    echo
+    echo Get file checksum
+    echo ~~~~~~~~~~~~~~~~~
+    echo
+}
+
+function header_fetch_image {
+    echo
+    echo Looking for updated image
+    echo ~~~~~~~~~~~~~~~~~~~~~~~~~
+    echo
+}

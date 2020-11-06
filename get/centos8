@@ -1,0 +1,39 @@
+#!/bin/bash
+# Version 1.2
+#############
+
+source ../functions || exit 1
+source ~/openrc || exit 1
+source ../config || exit 1
+
+if [ "$TMP_DIR" = "" ]; then
+    echo \$TMP_DIR not set
+    exit 1
+fi
+
+mkdir $TMP_DIR || exit 1
+
+CENTOS8="CentOS 8"
+CENTOS8_DESCR="Default user is 'centos' and access is only allowed using ssh keys."
+CENTOS8_SIZE=10
+CENTOS8_BASE=https://cloud.centos.org/centos/8/x86_64/images
+
+header_fetch_checksums 
+fetch_file $CENTOS8_BASE/CHECKSUM.asc $TMP_DIR/CENTOS8.sha256sum.gpg
+fetch_file $CENTOS8_BASE/CHECKSUM $TMP_DIR/CENTOS8.sha256sum
+
+header_verify_signature
+verify_signature
+
+header_get_checksum
+CENTOS8_FILE=`/bin/egrep "CentOS-8-GenericCloud-[0-9.-]+.x86_64.qcow2" $TMP_DIR/CENTOS8.sha256sum | tail -1 | /usr/bin/awk '{print $2}' | tr -d '()'`
+CENTOS8_CS=`/bin/egrep "CentOS-8-GenericCloud-[0-9.-]+.x86_64.qcow2" $TMP_DIR/CENTOS8.sha256sum | tail -1 | /usr/bin/awk '{print $4}' | tr -d '()'`
+echo $CENTOS8_FILE $CENTOS8_CS
+
+header_fetch_image 
+update_image $CENTOS8_BASE/$CENTOS8_FILE $TMP_DIR/$CENTOS8_FILE "$CENTOS8_CS" $CENTOS8_SIZE "$CENTOS8" "$CENTOS8_DESCR"
+
+cleanup 0
+
+# We should never end up here
+exit 1

@@ -1,0 +1,28 @@
+#!/bin/bash
+# Version 1.2
+#############
+source ../functions || exit 1
+source ~/openrc || exit 1
+source ../config || exit 1
+if [ "$TMP_DIR" = "" ]; then
+    echo \$TMP_DIR not set
+    exit 1
+fi
+mkdir $TMP_DIR || exit 1
+UBUNTU20="Ubuntu 20.04 LTS (Focal Fossa)"
+UBUNTU20_DESCR="Default user is 'ubuntu' and access is only allowed using ssh keys."
+UBUNTU20_SIZE=10
+UBUNTU20_BASE=https://cloud-images.ubuntu.com/releases/20.04/release
+header_fetch_checksums 
+fetch_file $UBUNTU20_BASE/SHA256SUMS $TMP_DIR/UBUNTU20.sha256sum
+fetch_file $UBUNTU20_BASE/SHA256SUMS.gpg $TMP_DIR/UBUNTU20.sha256sum.gpg
+header_verify_signature
+verify_signature
+header_get_checksum
+UBUNTU20_FILE="ubuntu-20.04-server-cloudimg-amd64.img"
+UBUNTU20_CS=`/bin/egrep "$UBUNTU20_FILE" $TMP_DIR/UBUNTU20.sha256sum | /usr/bin/awk '{print $1}'`
+echo $UBUNTU20_FILE $UBUNTU20_CS
+header_fetch_image 
+update_image $UBUNTU20_BASE/$UBUNTU20_FILE $TMP_DIR/$UBUNTU20_FILE "$UBUNTU20_CS" $UBUNTU20_SIZE "$UBUNTU20" "$UBUNTU20_DESCR"
+cleanup 0
+exit 1

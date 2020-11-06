@@ -1,0 +1,40 @@
+#!/bin/bash
+# Version 1.2
+#############
+
+source ../functions || exit 1
+source ~/openrc || exit 1
+source ../config || exit 1
+
+if [ "$TMP_DIR" = "" ]; then
+    echo \$TMP_DIR not set
+    exit 1
+fi
+
+mkdir $TMP_DIR || exit 1
+
+UBUNTU18="Ubuntu 18.04 LTS (Bionic Beaver)"
+UBUNTU18_DESCR="Default user is 'ubuntu' and access is only allowed using ssh keys."
+UBUNTU18_SIZE=10
+UBUNTU18_BASE=https://cloud-images.ubuntu.com/releases/18.04/release
+
+header_fetch_checksums 
+fetch_file $UBUNTU18_BASE/SHA256SUMS $TMP_DIR/UBUNTU18.sha256sum
+fetch_file $UBUNTU18_BASE/SHA256SUMS.gpg $TMP_DIR/UBUNTU18.sha256sum.gpg
+
+
+header_verify_signature
+verify_signature
+
+header_get_checksum
+UBUNTU18_FILE="ubuntu-18.04-server-cloudimg-amd64.img"
+UBUNTU18_CS=`/bin/egrep "$UBUNTU18_FILE" $TMP_DIR/UBUNTU18.sha256sum | /usr/bin/awk '{print $1}'`
+echo $UBUNTU18_FILE $UBUNTU18_CS
+
+header_fetch_image 
+update_image $UBUNTU18_BASE/$UBUNTU18_FILE $TMP_DIR/$UBUNTU18_FILE "$UBUNTU18_CS" $UBUNTU18_SIZE "$UBUNTU18" "$UBUNTU18_DESCR"
+
+cleanup 0
+
+# We should never end up here
+exit 1

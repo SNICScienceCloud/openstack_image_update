@@ -1,0 +1,39 @@
+#!/bin/bash
+# Version 1.2
+#############
+
+source ../functions || exit 1
+source ~/openrc || exit 1
+source ../config || exit 1
+
+if [ "$TMP_DIR" = "" ]; then
+    echo \$TMP_DIR not set
+    exit 1
+fi
+
+mkdir $TMP_DIR || exit 1
+
+DEBIAN9="Debian 9 (Stretch)"
+DEBIAN9_DESCR="Default user is 'debian' and access is only allowed using ssh keys."
+DEBIAN9_SIZE=10
+DEBIAN9_BASE=https://cdimage.debian.org/cdimage/openstack/current-9
+
+header_fetch_checksums 
+fetch_file $DEBIAN9_BASE/SHA256SUMS $TMP_DIR/DEBIAN9.sha256sum
+fetch_file $DEBIAN9_BASE/SHA256SUMS.sign $TMP_DIR/DEBIAN9.sha256sum.gpg
+
+header_verify_signature
+verify_signature
+
+header_get_checksum
+DEBIAN9_FILE=`/bin/egrep "debian-9.*openstack-amd64.qcow2$" $TMP_DIR/DEBIAN9.sha256sum | /usr/bin/awk '{print $2}'`
+DEBIAN9_CS=`/bin/egrep "debian-9.*openstack-amd64.qcow2$" $TMP_DIR/DEBIAN9.sha256sum | /usr/bin/awk '{print $1}'`
+echo $DEBIAN9_FILE $DEBIAN9_CS
+
+header_fetch_image 
+update_image $DEBIAN9_BASE/$DEBIAN9_FILE  $TMP_DIR/$DEBIAN9_FILE "$DEBIAN9_CS" $DEBIAN9_SIZE "$DEBIAN9" "$DEBIAN9_DESCR"
+
+cleanup 0
+
+# We should never end up here
+exit 1

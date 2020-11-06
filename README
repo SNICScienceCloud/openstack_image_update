@@ -1,0 +1,24 @@
+Image update script for openstack
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The script exptects to be in /usr/local/share/openstack_image_update so if you
+select another location you need to edit the files and change that.
+
+Images are converted to raw before import with the qemu-img tool so you need to
+install the qemu-utils package.
+
+First make sure that you have the correct keys from the distributions.
+The gpg keys in the keys directory are from 2017-04-03 and might be outdated.
+
+Then you can import the keys
+
+# cd /usr/local/share/openstack_image_update
+# ./import_keys.sh
+
+You can then run the script to make sure that you get all images.
+
+# /usr/local/share/openstack_image_update/openstack_image_update.sh 
+
+You can make a symlink in cron.daily to get daily image updates.
+
+# ln -s /usr/local/share/openstack_image_update/openstack_image_update.sh /etc/cron.daily/openstack_image_update.sh
